@@ -12,6 +12,7 @@ dependencies = [
     "fastmcp>=3.2,<4",
     "httpx>=0.28",
     "tenacity>=9.0",
+    "trafilatura>=2.2.0",
 ]
 
 [dependency-groups]
@@ -44,3 +45,9 @@ files = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: 需要真实外网访问的测试，验收时用 pytest -m live 单独跑"]
+
+[[tool.mypy.overrides]]
+module = "trafilatura.*"
+ignore_missing_imports = true

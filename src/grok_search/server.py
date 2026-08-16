@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastmcp import FastMCP
 
-from grok_search import __version__, grok
+from grok_search import __version__, fetch, grok
 from grok_search.config import ConfigError, load_config
 from grok_search.sources import NO_SOURCES_NOTE, SessionCache, merge_sources
 
@@ -68,6 +68,25 @@ async def get_sources(
             )
         }
     return {"session_id": session_id, "sources": sources, "sources_count": len(sources)}
+
+
+@mcp.tool(
+    name="web_fetch",
+    description=(
+        "Fetch a web page and return its main content as Markdown "
+        "(text, links, tables preserved). Works without any API key. "
+        "Returns 'content' on success or 'error' with a human-readable reason. "
+        "Note: JavaScript-only pages and paywalled content may not be extractable."
+    ),
+)
+async def web_fetch(
+    url: Annotated[str, "Complete http(s):// URL of the page to read."],
+) -> dict[str, Any]:
+    try:
+        content = await fetch.fetch_markdown(url)
+    except fetch.FetchError as e:
+        return {"error": str(e)}
+    return {"url": url, "content": content}
 
 
 def main() -> None:
