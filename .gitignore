@@ -1,0 +1,21 @@
+# 密钥与本地配置
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+
+# 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 本地数据与日志
+logs/
+*.log
+.DS_Store
