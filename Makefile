@@ -1,6 +1,6 @@
 # 质量门与常用命令。全绿才许 commit（CLAUDE.md 铁律 2）。
 
-.PHONY: check fmt test serve
+.PHONY: check fmt test serve demo-search
 
 check:
 	uv run ruff format --check src tests
@@ -16,7 +16,7 @@ test:
 	uv run pytest -q
 
 serve:
-	uv run grok-search --transport http --port 8000
+	uv run --env-file .env grok-search --transport http --port 8000
 
 demo-search:
 	uv run --env-file .env python -m grok_search.demo $(q)

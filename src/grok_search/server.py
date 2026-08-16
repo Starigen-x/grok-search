@@ -1,10 +1,14 @@
 """MCP 服务入口：工具定义与启动。工具面固定 3 个（architecture.md ADR-7）。"""
 
 import argparse
+import os
+import sys
 import uuid
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from grok_search import __version__, fetch, grok
 from grok_search.config import ConfigError, load_config
@@ -89,6 +93,38 @@ async def web_fetch(
     return {"url": url, "content": content}
 
 
+@mcp.custom_route("/", methods=["GET"])
+async def health(request: Request) -> JSONResponse:
+    """无鉴权的存活页：老板在浏览器里一眼确认服务活着。"""
+    del request
+    return JSONResponse(
+        {
+            "service": "grok-search",
+            "version": __version__,
+            "status": "ok",
+            "hint": "MCP 端点在 /mcp，需要 Bearer 访问令牌(GROK_HTTP_TOKEN)。",
+        }
+    )
+
+
+def require_http_token() -> str:
+    """HTTP 形态必须有访问令牌，防止陌生人盗用搜索额度。"""
+    token = os.getenv("GROK_HTTP_TOKEN", "").strip()
+    if not token:
+        raise SystemExit(
+            "配置错误: 网络服务模式必须设置环境变量 GROK_HTTP_TOKEN(访问令牌)，"
+            "否则任何人都能连上来消耗你的搜索额度。"
+            "生成一个随机长字符串填入即可，客户端连接时用同一令牌。"
+        )
+    return token
+
+
+def enable_http_auth(token: str) -> None:
+    from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+
+    mcp.auth = StaticTokenVerifier(tokens={token: {"client_id": "grok-search-owner"}})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="grok-search", description="联网搜索 MCP 服务")
     parser.add_argument("--version", action="version", version=f"grok-search {__version__}")
@@ -103,9 +139,15 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.transport == "http":
-        mcp.run(transport="http", host=args.host, port=args.port)
+        enable_http_auth(require_http_token())
+        mcp.run(transport="http", host=args.host, port=args.port, show_banner=False)
     else:
-        mcp.run(transport="stdio")
+        mcp.run(transport="stdio", show_banner=False)
+
+
+def _print_config_error_and_exit(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":
