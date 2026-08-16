@@ -2,7 +2,6 @@
 
 import argparse
 import os
-import sys
 import uuid
 from typing import Annotated, Any
 
@@ -143,11 +142,6 @@ def main() -> None:
         mcp.run(transport="http", host=args.host, port=args.port, show_banner=False)
     else:
         mcp.run(transport="stdio", show_banner=False)
-
-
-def _print_config_error_and_exit(message: str) -> None:
-    print(message, file=sys.stderr)
-    raise SystemExit(1)
 
 
 if __name__ == "__main__":

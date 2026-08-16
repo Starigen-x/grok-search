@@ -34,6 +34,7 @@
 | trafilatura | 网页→Markdown | 本地提取，砍掉两家付费服务依赖 | #3 |
 | pytest / pytest-asyncio / respx（dev） | 测试 | 质量门 | 立项 |
 | ruff / mypy（dev） | 格式、lint、类型 | 质量门 | 立项 |
+| starlette（经 fastmcp 传递引入，未单列版本） | HTTP 存活页的 Request/JSONResponse 类型 | fastmcp 自带并锁版本，仅 server.py 直接 import；不在 pyproject 单独声明 | #4 |
 
 ## 决策记录（ADR-lite：只记「为什么」，防止日后翻案无据）
 

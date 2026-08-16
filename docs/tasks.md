@@ -14,7 +14,7 @@
 | 1 | 搜索能用（web_search） | M | `make check` 全绿；测试覆盖：模拟上游正常返回时 content 非空、密钥错误/网络断/上游 5xx 时返回以「配置错误/网络错误/上游错误」开头的人话提示；`make demo-search` 真实调用输出成段答案 | 在 Claude Code 里问一个今天的新闻，看到成段的最新答案 | - | 待验收 |
 | 2 | 来源能查（get_sources） | M | 测试覆盖：含行内 `[[n]](url)` 引用的样本解析出全部来源、含 citations 字段的样本同样解析成功、两路皆空时 content 末尾明示「本次无来源」；真实搜索后 sources_count>0 且 get_sources 每条含可访问 url | 搜索后接着说「把来源列表给我」，看到链接列表，点开是真网页 | #1 | 待验收 |
 | 3 | 读网页（web_fetch） | S | 测试覆盖：样本 HTML 提取出含标题与正文的 Markdown；抓 https://example.com 返回文本含 "Example Domain"；无效网址返回人话报错 | 丢一个文章链接说「读一下这页」，AI 给出全文内容 | - | 待验收 |
-| 4 | 网络服务模式 | M | `make serve` 一条命令启动 HTTP 形态；无令牌请求返回 401；带令牌的测试客户端能列出恰好 3 个工具并成功调用 web_fetch | 我启动服务后，老板在浏览器打开我给的本机地址，能看到服务器有响应（提示需要令牌＝门锁着且活着） | #1 | 进行中 |
+| 4 | 网络服务模式 | M | `make serve` 一条命令启动 HTTP 形态；无令牌请求返回 401；带令牌的测试客户端能列出恰好 3 个工具并成功调用 web_fetch | 我启动服务后，老板在浏览器打开我给的本机地址，能看到服务器有响应（提示需要令牌＝门锁着且活着） | #1 | 待验收 |
 | 5 | 上架 GitHub·安装实测 | S | 仓库推送至 github.com/Starigen-x/grok-search（公开）；干净环境 `uvx --from git+https://github.com/Starigen-x/grok-search grok-search --version` 成功输出版本号；老板的 Claude Code 配置切换到新仓库后 #1–#3 的验证全部复测通过 | 重启 Claude Code 照常搜索、查来源——从这一刻起用的就是你自己的仓库 | #1–#4 | 待验收 |
 
 ## 里程碑 M2「随时随地」（草案，M1 收口后细化）
