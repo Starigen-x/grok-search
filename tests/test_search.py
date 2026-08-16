@@ -120,7 +120,8 @@ async def test_web_search_tool_returns_content_and_session(env: None) -> None:
     respx.post(CHAT_URL).respond(200, text=sse_body(delta_chunk(content="工具层答案")))
     async with Client(mcp) as client:
         result = await client.call_tool("web_search", {"query": "问题"})
-    assert result.data["content"] == "工具层答案"
+    # 功能 #2 起：无来源时 content 追加明示标注，故此处断言前缀而非全等
+    assert result.data["content"].startswith("工具层答案")
     assert result.data["session_id"]
 
 

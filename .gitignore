@@ -19,3 +19,6 @@ build/
 logs/
 *.log
 .DS_Store
+
+# QA 子代理隔离工作区
+.claude/worktrees/
