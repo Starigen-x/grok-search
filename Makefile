@@ -17,3 +17,6 @@ test:
 
 serve:
 	uv run grok-search --transport http --port 8000
+
+demo-search:
+	uv run --env-file .env python -m grok_search.demo $(q)
