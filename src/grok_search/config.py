@@ -15,6 +15,7 @@ class Config:
     model: str
     timeout_s: float
     debug: bool
+    empty_retries: int = 2
 
 
 def _require(name: str) -> str:
@@ -35,6 +36,7 @@ def load_config() -> Config:
         model=_require("GROK_MODEL"),
         timeout_s=float(os.getenv("GROK_TIMEOUT_S", "120")),
         debug=os.getenv("GROK_DEBUG", "").lower() in ("1", "true", "yes"),
+        empty_retries=int(os.getenv("GROK_EMPTY_RETRIES", "2")),
     )
 
 

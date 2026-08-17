@@ -146,27 +146,14 @@ def _parse_body(body: str) -> SearchOutcome:
     return outcome
 
 
-async def search(
+async def _request_once(
     cfg: Config,
-    query: str,
-    platform: str = "",
-    attempts: int = 3,
+    payload: dict[str, object],
+    attempts: int,
 ) -> SearchOutcome:
-    """执行一次联网搜索。失败抛 UpstreamError（人话）。"""
-    user_content = f"{_time_context()}\n\n{query}"
-    if platform:
-        user_content += f"\n\n(Focus your web search on this platform: {platform})"
-    payload = {
-        "model": cfg.model,
-        "messages": [
-            {"role": "system", "content": SEARCH_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-        "stream": True,
-    }
+    """发一次请求（内含网络类错误的重试）。失败抛 UpstreamError（人话）。"""
     headers = {"Authorization": f"Bearer {cfg.api_key}", "Content-Type": "application/json"}
     timeout = httpx.Timeout(connect=10.0, read=cfg.timeout_s, write=10.0, pool=10.0)
-
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             async for attempt in AsyncRetrying(
@@ -180,14 +167,44 @@ async def search(
                         f"{cfg.api_url}/chat/completions", headers=headers, json=payload
                     )
                     response.raise_for_status()
-                    outcome = _parse_body(response.text)
+                    return _parse_body(response.text)
     except UpstreamError:
         raise
     except Exception as exc:  # noqa: BLE001 - 统一转人话，架构硬约束
         raise _human_error(exc, cfg) from exc
+    raise UpstreamError("上游错误: 请求未能完成。")  # 理论不可达，兜底防止返回 None
 
-    if not outcome.content.strip():
-        raise UpstreamError(
-            f"上游错误: 模型({cfg.model})返回了空内容。可能是模型暂不可用或被限流，请重试。"
-        )
-    return outcome
+
+async def search(
+    cfg: Config,
+    query: str,
+    platform: str = "",
+    attempts: int = 3,
+) -> SearchOutcome:
+    """执行一次联网搜索。
+
+    上游模型偶发返回空内容（冷启动/限流），实测每几次就会遇到一次；此时整轮重发，
+    最多 cfg.empty_retries 次，全空才报错——用户不该看到这种抖动。
+    """
+    user_content = f"{_time_context()}\n\n{query}"
+    if platform:
+        user_content += f"\n\n(Focus your web search on this platform: {platform})"
+    payload: dict[str, object] = {
+        "model": cfg.model,
+        "messages": [
+            {"role": "system", "content": SEARCH_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        "stream": True,
+    }
+
+    rounds = max(0, cfg.empty_retries) + 1
+    for _ in range(rounds):
+        outcome = await _request_once(cfg, payload, attempts)
+        if outcome.content.strip():
+            return outcome
+
+    raise UpstreamError(
+        f"上游错误: 模型({cfg.model})连续 {rounds} 次返回空内容。"
+        "可能是该模型暂不可用或被限流，请稍后再试，或换一个模型。"
+    )

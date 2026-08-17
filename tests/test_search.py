@@ -110,6 +110,7 @@ async def test_search_network_error_speaks_human() -> None:
 
 @respx.mock
 async def test_search_empty_content_is_an_error() -> None:
+    # 功能 #8 起：空内容会自动重发，全空才报错（详见下方 #8 专项测试）
     respx.post(CHAT_URL).respond(200, text=sse_body(delta_chunk(role="assistant")))
     with pytest.raises(grok.UpstreamError, match="空内容"):
         await grok.search(CFG, "问题", attempts=1)
@@ -143,3 +144,58 @@ def test_load_config_strips_trailing_slash(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("GROK_API_KEY", "k")
     monkeypatch.setenv("GROK_MODEL", "m")
     assert load_config().api_url == "https://gw.test/v1"
+
+
+# ---------- 功能 #8：空内容自动重试 ----------
+
+
+@respx.mock
+async def test_empty_content_is_retried_and_succeeds() -> None:
+    """上游首次吐空、第二次有内容 → 用户无感拿到答案。"""
+    route = respx.post(CHAT_URL)
+    route.side_effect = [
+        httpx.Response(200, text=sse_body(delta_chunk(role="assistant"))),
+        httpx.Response(200, text=sse_body(delta_chunk(content="重发后的答案"))),
+    ]
+    outcome = await grok.search(CFG, "问题", attempts=1)
+    assert outcome.content == "重发后的答案"
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_all_rounds_empty_reports_human_error() -> None:
+    """连续全空才报错，且说明重发过几次。"""
+    route = respx.post(CHAT_URL)
+    route.side_effect = [
+        httpx.Response(200, text=sse_body(delta_chunk(role="assistant"))) for _ in range(3)
+    ]
+    with pytest.raises(grok.UpstreamError, match="连续 3 次返回空内容"):
+        await grok.search(CFG, "问题", attempts=1)
+    assert route.call_count == 3
+
+
+@respx.mock
+async def test_empty_retries_is_configurable() -> None:
+    cfg = Config(**{**CFG.__dict__, "empty_retries": 0})
+    route = respx.post(CHAT_URL)
+    route.side_effect = [httpx.Response(200, text=sse_body(delta_chunk(role="assistant")))]
+    with pytest.raises(grok.UpstreamError, match="连续 1 次返回空内容"):
+        await grok.search(cfg, "问题", attempts=1)
+    assert route.call_count == 1
+
+
+@respx.mock
+async def test_non_empty_first_round_does_not_retry() -> None:
+    """正常返回时不得多打一次上游（省钱、省时间）。"""
+    route = respx.post(CHAT_URL).respond(200, text=sse_body(delta_chunk(content="一次就好")))
+    outcome = await grok.search(CFG, "问题", attempts=1)
+    assert outcome.content == "一次就好"
+    assert route.call_count == 1
+
+
+def test_empty_retries_read_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GROK_API_URL", "https://gw.test/v1")
+    monkeypatch.setenv("GROK_API_KEY", "k")
+    monkeypatch.setenv("GROK_MODEL", "m")
+    monkeypatch.setenv("GROK_EMPTY_RETRIES", "5")
+    assert load_config().empty_retries == 5
