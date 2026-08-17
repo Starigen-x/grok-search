@@ -51,6 +51,8 @@
 | 9 | 2026-08-17 | 部署形态：pipi-nyc 上 systemd + uvx 常驻(127.0.0.1:8600)，挂 ai.starigen.com/grok-search/ 路径反代；上游走本机 127.0.0.1:3001/v1 直连 | 借用现成域名与证书，零 DNS/证书工作；同机直连网关省一圈公网回环 | 新子域 search.starigen.com：要动 DNS 和证书；独立云主机：多花钱多一台要管的机器 |
 | 10 | 2026-08-17 | claude.ai 连接器接入用「秘密路径」：nginx 另开 `^~ /gs-<随机串>/` 反代同一服务并注入 `Authorization` 头；应用侧鉴权一行不改；`~ ^/gs-` 兜底 404 | claude.ai 的自定义连接器只支持 OAuth 或无鉴权服务，无处填静态令牌/自定义头（已查官方文档）；秘密路径以 URL 保密性换零改造，泄露面仅限搜索额度且换路径 1 分钟 | ① 实现 OAuth 2.1/DCR：为单用户引入整套授权服务，违反最少活动部件；② 端点彻底开放：任何人可白嫖额度 |
 
+| 11 | 2026-08-17 | **不为 claude.ai 官方客户端自建 OAuth**（老板决策）；秘密路径保留，服务于能直连的客户端 | 实测 claude.ai 强制 OAuth 动态注册，拒绝无鉴权服务（报错 Couldn't register with sign-in service）；自建需独立子域 + OAuth 2.1 + DCR 约半天，且 claude.ai 侧 2026 年有公开缺陷（授权成功但工具不显示、缓存导致重加无效）；现有三条通路已覆盖全部实际使用场景 | ① FastMCP GitHubProvider/OAuthProxy：功能可行但成本与风险不匹配单用户收益；② 第三方 fastmcp-personal-auth：未经审计的第三方鉴权组件，不上生产 |
+
 ## 目录结构约定
 
 ```
